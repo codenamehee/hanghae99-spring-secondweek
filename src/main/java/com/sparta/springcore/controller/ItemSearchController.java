@@ -1,54 +1,37 @@
 package com.sparta.springcore.controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.springcore.dto.ItemDto;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.List;
+import com.sparta.springcore.service.ItemSearchService;
+import org.springframework.beans.factory.annotation.Autowired;
 
+// 빈 등록을 위한 @Component 설정이 이미 포함된 @Controller 어노테이션 설정
 @Controller
+// 옆에 커피콩 모양은 스프링 IoC 컨테이너에 의해 관리되는 클래스라는 뜻
+// 이 클래스들에서만 Autowired를 적용할 수 있다.
 public class ItemSearchController {
 
-    // Controller 가 자동으로 해주는 일
-// 1. API Request 의 파라미터 값에서 검색어 추출 -> query 변수
-// 5. API Response 보내기
-// 5.1) response 의 header 설정
-// 5.2) response 의 body 설정
+    // ItemSearchController의 필수적인 멤버변수로 ItemSearchService를 선언
+    private final ItemSearchService itemSearchService;
+
+    // 스프링에 의해 자동으로 의존성이 주입될(DI) @Autowired 어노테이션 설정
+    // 스프링에 의해 IoC에서 관리되는 bean이 된다는 것
+    // ItemSearchService의 객체를 매개변수(파라미터)로 받는 ItemSearchController의 객체를 생성하는 생성자
+    @Autowired
+    public ItemSearchController(ItemSearchService itemSearchService) {
+        this.itemSearchService = itemSearchService;
+    }
+
     @GetMapping("/api/search")
     @ResponseBody
     public List<ItemDto> getItems(@RequestParam String query) throws IOException {
-// 2. 네이버 쇼핑 API 호출에 필요한 Header, Body 정리
-        RestTemplate rest = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("X-Naver-Client-Id", "zdqMoIkFaK8uKvC2oNY2");
-        headers.add("X-Naver-Client-Secret", "LiZfsgtuD5");
-        String body = "";
-        HttpEntity<String> requestEntity = new HttpEntity<>(body, headers);
-
-// 3. 네이버 쇼핑 API 호출 결과 -> naverApiResponseJson (JSON 형태)
-        ResponseEntity<String> responseEntity = rest.exchange("https://openapi.naver.com/v1/search/shop.json?query=" + query, HttpMethod.GET, requestEntity, String.class);
-        String naverApiResponseJson = responseEntity.getBody();
-
-// 4. naverApiResponseJson (JSON 형태) -> itemDtoList (자바 객체 형태)
-// - naverApiResponseJson 에서 우리가 사용할 데이터만 추출 -> List<ItemDto> 객체로 변환
-        ObjectMapper objectMapper = new ObjectMapper()
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        JsonNode itemsNode = objectMapper.readTree(naverApiResponseJson).get("items");
-        List<ItemDto> itemDtoList = objectMapper
-                .readerFor(new TypeReference<List<ItemDto>>() {})
-                .readValue(itemsNode);
+        List<ItemDto> itemDtoList = itemSearchService.getItems(query);
 
         return itemDtoList;
     }
